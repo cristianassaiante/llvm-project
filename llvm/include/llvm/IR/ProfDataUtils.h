@@ -211,6 +211,8 @@ LLVM_ABI bool hasExplicitlyUnknownBranchWeights(const Instruction &I);
 /// Scaling the profile data attached to 'I' using the ratio of S/T.
 LLVM_ABI void scaleProfData(Instruction &I, uint64_t S, uint64_t T);
 
+LLVM_ABI bool stripProfData(Module &M);
+
 /// Get the branch weights of a branch conditioned on b1 || b2, where b1 and b2
 /// are 2 booleans that are the conditions of 2 branches for which we have the
 /// branch weights B1 and B2, respectively. In both B1 and B2, the first

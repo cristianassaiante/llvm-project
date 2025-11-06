@@ -31,6 +31,7 @@
 #include "llvm/IR/LegacyPassNameParser.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/ModuleSummaryIndex.h"
+#include "llvm/IR/ProfDataUtils.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/InitializePasses.h"
@@ -155,6 +156,10 @@ static cl::opt<bool>
 static cl::opt<bool>
     StripNamedMetadata("strip-named-metadata",
                        cl::desc("Strip module-level named metadata"));
+
+static cl::opt<bool>
+    StripProfData("strip-prof-data",
+                  cl::desc("Strip profile data from translation unit"));
 
 static cl::opt<bool>
     OptLevelO0("O0", cl::desc("Optimization level 0. Similar to clang -O0. "
@@ -569,6 +574,10 @@ optMain(int argc, char **argv,
       M->eraseNamedMetadata(NMD);
     }
   }
+
+  // Erase prof data
+  if (StripProfData)
+    stripProfData(*M);
 
   // If we are supposed to override the target triple, do so now.
   if (!TargetTriple.empty())

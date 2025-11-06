@@ -20,6 +20,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Metadata.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 
 using namespace llvm;
@@ -390,4 +391,57 @@ void llvm::scaleProfData(Instruction &I, uint64_t S, uint64_t T) {
           Type::getInt64Ty(C), Val.udiv(APT).getLimitedValue())));
     }
   I.setMetadata(LLVMContext::MD_prof, MDNode::get(C, Vals));
+}
+
+/// This function is responsible for stripping profiling-related metadata
+/// from an IR module. First, it removes all the MD_prof metadata from
+/// functions and instructions. Then, it removes the ProfileSummary from
+/// llvm.module.flags
+bool llvm::stripProfData(Module &M) {
+  bool Changed = false;
+
+  for (Function &F : M) {
+    // Remove !prof metadata from functions
+    if (F.hasMetadata(LLVMContext::MD_prof)) {
+      F.setMetadata(LLVMContext::MD_prof, nullptr);
+      Changed = true;
+    }
+
+    for (BasicBlock &BB : F) {
+      for (Instruction &I : BB) {
+        // Remove !prof metadata from instructions
+        if (I.hasMetadata(LLVMContext::MD_prof)) {
+          I.setMetadata(LLVMContext::MD_prof, nullptr);
+          Changed = true;
+        }
+      }
+    }
+  }
+
+  // Remove ProfileSummary from llvm.module.flags
+  NamedMDNode *Flags = M.getNamedMetadata("llvm.module.flags");
+  if (!Flags)
+    return Changed;
+
+  SmallVector<MDNode *> UpdatedOperands;
+
+  // Iterate over all operands and keep ll but ProfileSummary
+  for (unsigned i = 0; i < Flags->getNumOperands(); ++i) {
+    MDNode *Op = Flags->getOperand(i);
+    if (Op->getNumOperands() < 2)
+      continue;
+
+    auto *NameMD = dyn_cast<MDString>(Op->getOperand(1));
+    if (NameMD && NameMD->getString() == "ProfileSummary")
+      continue;
+
+    UpdatedOperands.push_back(Op);
+  }
+
+  // Replace the named metadata operands
+  Flags->dropAllReferences();
+  for (auto *Op : UpdatedOperands)
+    Flags->addOperand(Op);
+
+  return Changed;
 }
