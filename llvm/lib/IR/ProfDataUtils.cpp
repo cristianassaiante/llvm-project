@@ -432,7 +432,8 @@ bool llvm::stripProfData(Module &M) {
       continue;
 
     auto *NameMD = dyn_cast<MDString>(Op->getOperand(1));
-    if (NameMD && NameMD->getString() == "ProfileSummary")
+    if (NameMD && (NameMD->getString() == "ProfileSummary" ||
+                   NameMD->getString() == "CG Profile"))
       continue;
 
     UpdatedOperands.push_back(Op);
